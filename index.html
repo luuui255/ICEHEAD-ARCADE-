@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Black River Rush</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        @font-face {
+            font-family: 'Baloo';
+            src: url('sprites/fontes/Baloo2-VariableFont_wght.ttf');
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #21181b;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Baloo', Arial, sans-serif;
+            user-select: none;
+            touch-action: none;
+        }
+
+        #game-wrapper {
+            position: relative;
+            background: #21181b;
+            overflow: hidden;
+            will-change: transform;
+        }
+
+        .tela {
+            position: absolute;
+            inset: 0;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 300;
+        }
+        .tela.ativa { display: flex; }
+
+        #tela-splash {
+            background: #21181b;
+            z-index: 500;
+            transition: opacity 0.6s ease;
+        }
+        #tela-splash.fadeout { opacity: 0; pointer-events: none; }
+        .splash-logo {
+            width: min(320px, 70%);
+            opacity: 0;
+            transform: scale(0.85);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+        .splash-logo.show { opacity: 1; transform: scale(1); }
+        .splash-tagline {
+            color: #92e8c0;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 3px;
+            opacity: 0;
+            margin-top: 16px;
+            transition: opacity 0.4s ease 0.3s;
+        }
+        .splash-tagline.show { opacity: 0.7; }
+
+        .fundo-menu { position: absolute; inset: 0; background: url('sprites/identidade/fundo menu.png') center/cover no-repeat; z-index: 0; }
+        .fundo-overlay { position: absolute; inset: 0; background: rgba(28, 61, 42, 0.45); z-index: 1; }
+        .tela-conteudo { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; width: 100%; padding: 0 20px; }
+
+        .studio-logo { position: absolute; bottom: 3%; left: 3%; width: 12%; min-width: 80px; max-width: 130px; opacity: 0.7; mix-blend-mode: screen; z-index: 3; }
+
+        #btn-idioma-wrap { position: absolute; bottom: 3%; right: 3%; z-index: 3; display: flex; gap: 6px; }
+        .btn-idioma { background: rgba(33,24,27,0.6); border: 2px solid #92e8c0; border-radius: 8px; color: #92e8c0; font-family: 'Baloo', Arial, sans-serif; font-size: 12px; font-weight: 700; padding: 4px 10px; cursor: pointer; transition: background 0.15s; }
+        .btn-idioma.ativo { background: #92e8c0; color: #04342c; }
+
+        .logo { width: min(360px, 75%); margin-bottom: 4%; filter: drop-shadow(0 4px 16px rgba(0,0,0,0.5)); }
+        .logo-pequena { width: 200px; margin-bottom: 2%; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5)); }
+
+        .btn { font-family: 'Baloo', Arial, sans-serif; font-weight: 700; border: 2px solid #21181b; border-radius: 12px; cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; box-shadow: 0 4px 0 #21181b; width: 260px; text-align: center; }
+        .btn:active { transform: translateY(4px); box-shadow: 0 0 0 #21181b; }
+        .btn-primary   { background: #63ab3f; color: #173404; font-size: 20px; padding: 10px 0; margin-bottom: 10px; }
+        .btn-secondary { background: #4c6885; color: #e1f5ee; font-size: 16px; padding: 8px 0;  margin-bottom: 8px; }
+        .btn-danger    { background: #e64539; color: #ffffff;  font-size: 16px; padding: 8px 0;  margin-bottom: 8px; }
+        .btn-link      { background: transparent; border: 2px solid #92e8c0; color: #92e8c0; font-size: 14px; padding: 6px 0; margin-bottom: 8px; }
+
+        #tela-passaro h2 { color: #ffee83; font-size: 20px; font-weight: 800; margin-bottom: 3%; letter-spacing: 1px; }
+        .passaros-grid { display: flex; gap: 12px; margin-bottom: 4%; flex-wrap: wrap; justify-content: center; }
+        .card-passaro { background: rgba(33,24,27,0.7); border: 3px solid transparent; border-radius: 12px; padding: 10px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px; transition: border-color 0.15s, transform 0.1s; width: 110px; }
+        .card-passaro img { width: 100%; aspect-ratio: 1; object-fit: contain; }
+        .card-passaro span { color: #e1f5ee; font-size: 13px; font-weight: 600; }
+        .card-passaro.selecionado { border-color: #ffee83; background: rgba(255,238,131,0.15); transform: scale(1.05); }
+
+        #tela-loading { background: #21181b; z-index: 400; }
+        .loading-logo { width: min(280px, 65%); margin-bottom: 8%; filter: drop-shadow(0 4px 24px rgba(0,0,0,0.8)); }
+        .loading-bar-wrap { width: min(260px, 70%); height: 10px; background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden; margin-bottom: 16px; }
+        .loading-bar { height: 100%; width: 0%; background: #63ab3f; border-radius: 10px; transition: width 0.1s linear; }
+        .loading-text { color: #92e8c0; font-size: 14px; font-weight: 600; letter-spacing: 2px; opacity: 0.8; }
+
+        #ui-hud { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 100; display: none; justify-content: space-between; align-items: flex-start; padding: 16px 20px; }
+        #ui-hud.ativa { display: flex; }
+
+        .hud-box { background: rgba(33, 24, 27, 0.85); border: 2px solid #21181b; border-radius: 12px; padding: 6px 16px; text-align: center; display: flex; flex-direction: column; box-shadow: 0 4px 0 rgba(0,0,0,0.3); }
+        #hud-left { color: #ffee83; }
+        #hud-left .score-val  { font-size: 28px; font-weight: 800; line-height: 1.1; }
+        #hud-left .label-text { font-size: 12px; font-weight: 600; opacity: 0.9; letter-spacing: 1px; }
+        #hud-right { background: #92e8c0; color: #21181b; }
+        #hud-right .score-val  { font-size: 28px; font-weight: 800; line-height: 1.1; }
+        #hud-right .label-text { font-size: 12px; font-weight: 700; opacity: 0.9; letter-spacing: 1px; }
+
+        #hud-center { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); background: #ff5277; color: #4b1528; padding: 6px 24px; border-radius: 20px; font-size: 16px; font-weight: 800; border: 2px solid #21181b; box-shadow: 0 4px 0 rgba(0,0,0,0.3); white-space: nowrap; }
+
+        #flash-colisao { position: absolute; inset: 0; background: #ff5277; opacity: 0; pointer-events: none; z-index: 200; transition: opacity 0.05s ease; }
+
+        #btn-pause { position: absolute; bottom: 3%; right: 3%; z-index: 150; display: none; background: rgba(33,24,27,0.7); border: 2px solid #21181b; border-radius: 50%; width: 48px; height: 48px; font-size: 20px; cursor: pointer; align-items: center; justify-content: center; color: #ffee83; pointer-events: all; }
+        #btn-pause.ativo { display: flex; }
+
+        #tela-pause { background: rgba(33,24,27,0.88); z-index: 250; }
+        #tela-pause h2 { color: #ffee83; font-size: 32px; font-weight: 800; margin-bottom: 6%; letter-spacing: 2px; }
+
+        #tela-gameover { background: rgba(33,24,27,0.93); z-index: 280; }
+        #go-title       { color: #ff5277; font-size: 52px; font-weight: 800; margin-bottom: 2%; }
+        #go-score-label { color: #ffee83; font-size: 14px; font-weight: 600; opacity: 0.7; letter-spacing: 2px; }
+        #go-score-val   { color: #ffee83; font-size: 80px; font-weight: 800; line-height: 1; margin-bottom: 2%; }
+        #go-best-val    { color: #92e8c0; font-size: 20px; font-weight: 600; margin-bottom: 6%; }
+
+        .creditos-box { background: rgba(33,24,27,0.75); border-radius: 16px; padding: 28px; margin-bottom: 4%; text-align: center; width: min(400px, 85%); }
+        .creditos-nome { color: #ffee83; font-size: 18px; font-weight: 800; margin-bottom: 4px; }
+        .creditos-role { color: #92e8c0; font-size: 13px; font-weight: 400; opacity: 0.9; }
+        .creditos-sep  { width: 100%; height: 1px; background: rgba(255,255,255,0.1); margin: 12px 0; }
+
+        .config-box { background: rgba(33,24,27,0.75); border-radius: 16px; padding: 28px; margin-bottom: 5%; width: min(380px, 85%); display: flex; flex-direction: column; gap: 16px; }
+        .config-row { display: flex; flex-direction: column; gap: 6px; }
+        .config-label { color: #ffee83; font-size: 14px; font-weight: 600; letter-spacing: 1px; }
+        .config-slider { width: 100%; accent-color: #63ab3f; height: 6px; cursor: pointer; }
+        .config-val { color: #92e8c0; font-size: 12px; font-weight: 600; text-align: right; }
+
+        .placeholder-titulo { color: #ffee83; font-size: 28px; font-weight: 800; margin-bottom: 4%; }
+    </style>
+</head>
+<body>
+<div id="game-wrapper">
+
+    <div id="tela-splash" class="tela ativa">
+        <img src="sprites/identidade/treco 2.png" class="splash-logo" id="splash-logo" alt="Icehead Studio">
+        <div class="splash-tagline" id="splash-tagline">ICEHEAD STUDIO</div>
+    </div>
+
+    <div id="tela-menu" class="tela">
+        <div class="fundo-menu"></div>
+        <div class="fundo-overlay"></div>
+        <div class="tela-conteudo">
+            <img src="sprites/identidade/logo.png" class="logo" alt="Black River Rush">
+            <button class="btn btn-primary"   id="btn-jogar"         data-i18n="jogar">JOGAR</button>
+            <button class="btn btn-secondary" id="btn-menu-creditos" data-i18n="creditos">CRÉDITOS</button>
+            <button class="btn btn-secondary" id="btn-menu-config"   data-i18n="config">CONFIGURAÇÕES</button>
+        </div>
+        <img src="sprites/identidade/treco 2.png" class="studio-logo" alt="Icehead Studio">
+        <div id="btn-idioma-wrap">
+            <button class="btn-idioma ativo" data-lang="pt">PT</button>
+            <button class="btn-idioma"       data-lang="en">EN</button>
+            <button class="btn-idioma"       data-lang="es">ES</button>
+        </div>
+    </div>
+
+    <div id="tela-passaro" class="tela">
+        <div class="fundo-menu"></div>
+        <div class="fundo-overlay"></div>
+        <div class="tela-conteudo">
+            <img src="sprites/identidade/logo.png" class="logo-pequena" alt="Black River Rush">
+            <h2 data-i18n="escolha">ESCOLHA SEU PILOTO</h2>
+            <div class="passaros-grid">
+                <div class="card-passaro selecionado" data-passaro="passaro_1"><img src="sprites/passaros/passaro_1.png" alt="Tucano"><span>TUCANO</span></div>
+                <div class="card-passaro" data-passaro="passaro_2"><img src="sprites/passaros/passaro_2.png" alt="Arara"><span>ARARA</span></div>
+                <div class="card-passaro" data-passaro="passaro_3"><img src="sprites/passaros/passaro_3.png" alt="Pica-pau"><span>PICA-PAU</span></div>
+            </div>
+            <button class="btn btn-primary"   id="btn-confirmar"   data-i18n="confirmar">CONFIRMAR</button>
+            <button class="btn btn-secondary" id="btn-voltar-menu" data-i18n="voltar">VOLTAR</button>
+        </div>
+        <img src="sprites/identidade/treco 2.png" class="studio-logo" alt="Icehead Studio">
+    </div>
+
+    <div id="tela-loading" class="tela">
+        <div class="tela-conteudo">
+            <img src="sprites/identidade/logo.png" class="loading-logo" alt="Black River Rush">
+            <div class="loading-bar-wrap"><div class="loading-bar" id="loading-bar"></div></div>
+            <div class="loading-text" id="loading-text">CARREGANDO...</div>
+        </div>
+    </div>
+
+    <div id="ui-hud">
+        <div id="hud-left" class="hud-box">
+            <span class="label-text" data-i18n="pontuacao">PONTUAÇÃO</span>
+            <span id="ui-score" class="score-val">0</span>
+        </div>
+        <div id="hud-center"><span id="ui-wave">FASE 1</span></div>
+        <div id="hud-right" class="hud-box">
+            <span class="label-text" data-i18n="recorde">RECORDE</span>
+            <span id="ui-best" class="score-val">0</span>
+        </div>
+    </div>
+
+    <div id="flash-colisao"></div>
+    <button id="btn-pause">⏸</button>
+
+    <div id="tela-pause" class="tela">
+        <div class="tela-conteudo">
+            <h2 data-i18n="pausado">PAUSADO</h2>
+            <button class="btn btn-primary"   id="btn-retomar"        data-i18n="retomar">RETOMAR</button>
+            <button class="btn btn-secondary" id="btn-pause-menu"      data-i18n="menu">MENU PRINCIPAL</button>
+            <button class="btn btn-danger"    id="btn-pause-reiniciar" data-i18n="recomecar">RECOMEÇAR</button>
+        </div>
+    </div>
+
+    <div id="tela-gameover" class="tela">
+        <div class="tela-conteudo">
+            <div id="go-title"       data-i18n="fimjogo">FIM DE JOGO</div>
+            <div id="go-score-label" data-i18n="pontuacao">PONTUAÇÃO</div>
+            <div id="go-score-val">0</div>
+            <div id="go-best-val">RECORDE: 0</div>
+            <button class="btn btn-primary"   id="btn-reiniciar" data-i18n="jogarnovamente">JOGAR NOVAMENTE</button>
+            <button class="btn btn-secondary" id="btn-go-menu"   data-i18n="menu">MENU PRINCIPAL</button>
+        </div>
+    </div>
+
+    <div id="tela-creditos" class="tela">
+        <div class="fundo-menu"></div>
+        <div class="fundo-overlay"></div>
+        <div class="tela-conteudo">
+            <div class="placeholder-titulo" data-i18n="creditos">CRÉDITOS</div>
+            <div class="creditos-box">
+                <div class="creditos-nome">Lui Souza de Almeida</div>
+                <div class="creditos-role">Game Design, Arte &amp; Programação</div>
+                <div class="creditos-sep"></div>
+                <div class="creditos-nome">JDSherbert</div>
+                <div class="creditos-role">Efeitos Sonoros — Ultimate UI SFX Pack</div>
+            </div>
+            <button class="btn btn-link"      id="btn-studio"          data-i18n="estudio">CONHEÇA O ESTÚDIO</button>
+            <button class="btn btn-secondary" id="btn-creditos-voltar" data-i18n="voltar">VOLTAR</button>
+        </div>
+        <img src="sprites/identidade/treco 2.png" class="studio-logo" alt="Icehead Studio">
+    </div>
+
+    <div id="tela-config" class="tela">
+        <div class="fundo-menu"></div>
+        <div class="fundo-overlay"></div>
+        <div class="tela-conteudo">
+            <div class="placeholder-titulo" data-i18n="config">CONFIGURAÇÕES</div>
+            <div class="config-box">
+                <div class="config-row">
+                    <span class="config-label" data-i18n="volemusica">VOLUME DA MÚSICA</span>
+                    <input type="range" class="config-slider" min="0" max="100" value="70" id="slider-music">
+                    <span class="config-val" id="val-music">70%</span>
+                </div>
+                <div class="config-row">
+                    <span class="config-label" data-i18n="volefx">VOLUME DOS EFEITOS</span>
+                    <input type="range" class="config-slider" min="0" max="100" value="80" id="slider-sfx">
+                    <span class="config-val" id="val-sfx">80%</span>
+                </div>
+            </div>
+            <button class="btn btn-secondary" id="btn-config-voltar" data-i18n="voltar">VOLTAR</button>
+        </div>
+        <img src="sprites/identidade/treco 2.png" class="studio-logo" alt="Icehead Studio">
+    </div>
+
+</div>
+<script type="module">
+import kaboom from "https://unpkg.com/kaboom@3000.1.17/dist/kaboom.mjs";
+
+const BASE_W = 960;
+const BASE_H = 540;
+const wrapper = document.getElementById("game-wrapper");
+
+function ajustarTela() {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const scale = Math.min(vw / BASE_W, vh / BASE_H);
+    wrapper.style.width  = BASE_W + "px";
+    wrapper.style.height = BASE_H + "px";
+    wrapper.style.transform = `scale(${scale}) translateZ(0)`;
+    wrapper.style.transformOrigin = "top left";
+    wrapper.style.left = ((vw - BASE_W * scale) / 2) + "px";
+    wrapper.style.top  = ((vh - BASE_H * scale) / 2) + "px";
+    wrapper.style.position = "fixed";
+}
+ajustarTela();
+window.addEventListener("resize", ajustarTela);
+window.addEventListener("orientationchange", () => setTimeout(ajustarTela, 200));
+
+// ── SPLASH ────────────────────────────────────────────────────────
+const telaSplash = document.getElementById("tela-splash");
+const splashLogo = document.getElementById("splash-logo");
+const splashTag  = document.getElementById("splash-tagline");
+
+function rodarSplash(onComplete) {
+    setTimeout(() => { splashLogo.classList.add("show"); splashTag.classList.add("show"); }, 300);
+    setTimeout(() => {
+        telaSplash.classList.add("fadeout");
+        setTimeout(() => { telaSplash.style.display = "none"; onComplete(); }, 650);
+    }, 2200);
+}
+
+// ── KABOOM ────────────────────────────────────────────────────────
+const k = kaboom({
+    width:  BASE_W,
+    height: BASE_H,
+    letterbox: false,
+    pixelDensity: 1,
+    background: [140, 210, 180],
+    canvas: (() => {
+        const c = document.createElement("canvas");
+        wrapper.prepend(c);
+        return c;
+    })(),
+});
+
+// ── ASSETS ────────────────────────────────────────────────────────
+k.loadSprite("ceu",         "sprites/cenario/CEU_5.png",            { texFilter: "linear" });
+k.loadSprite("nuvens",      "sprites/cenario/nuvens_4.png",         { texFilter: "linear" });
+k.loadSprite("mato_traz",   "sprites/cenario/mato de traz_3.png",   { texFilter: "linear" });
+k.loadSprite("mato_frente", "sprites/cenario/mato da frente_2.png", { texFilter: "linear" });
+k.loadSprite("rio",         "sprites/cenario/rio_1.png",            { texFilter: "linear" });
+k.loadSprite("passaro_1",   "sprites/passaros/passaro_1.png",       { texFilter: "linear" });
+k.loadSprite("passaro_2",   "sprites/passaros/passaro_2.png",       { texFilter: "linear" });
+k.loadSprite("passaro_3",   "sprites/passaros/passaro_3.png",       { texFilter: "linear" });
+k.loadSprite("bota",        "sprites/obstaculos/bota.png",          { texFilter: "linear" });
+k.loadSprite("pneu",        "sprites/obstaculos/pneu.png",          { texFilter: "linear" });
+k.loadSprite("toco",        "sprites/obstaculos/toco.png",          { texFilter: "linear" });
+
+// músicas
+k.loadSound("musica_menu",  "sons/musicas/The-Calm-River.ogg");
+k.loadSound("musica_game",  "sons/musicas/Adventure-in-veins.ogg");
+
+// efeitos
+k.loadSound("sfx_select",       "sons/efeitos sonoros/JDSherbert - Ultimate UI SFX Pack - Select - 1.ogg");
+k.loadSound("sfx_confirm",      "sons/efeitos sonoros/JDSherbert - Ultimate UI SFX Pack - Select - 2.ogg");
+k.loadSound("sfx_voltar",       "sons/efeitos sonoros/JDSherbert - Ultimate UI SFX Pack - Cancel - 1.ogg");
+k.loadSound("sfx_popup_open",   "sons/efeitos sonoros/JDSherbert - Ultimate UI SFX Pack - Popup Open - 1.ogg");
+k.loadSound("sfx_popup_close",  "sons/efeitos sonoros/JDSherbert - Ultimate UI SFX Pack - Popup Close - 1.ogg");
+k.loadSound("sfx_swipe",        "sons/efeitos sonoros/JDSherbert - Ultimate UI SFX Pack - Swipe - 1.ogg");
+k.loadSound("sfx_cursor",       "sons/efeitos sonoros/JDSherbert - Ultimate UI SFX Pack - Cursor - 1.ogg");
+k.loadSound("sfx_error",        "sons/efeitos sonoros/JDSherbert - Ultimate UI SFX Pack - Error - 1.ogg");
+k.loadSound("sfx_punch",        "sons/efeitos sonoros/punch.ogg");
+
+// ── VOLUME ────────────────────────────────────────────────────────
+let volMusica = 0.7;
+let volEfeitos = 0.8;
+let musicaAtual = null;
+
+function tocarMusica(nome) {
+    if (musicaAtual) { musicaAtual.stop(); musicaAtual = null; }
+    musicaAtual = k.play(nome, { loop: true, volume: volMusica });
+}
+
+function pararMusica() {
+    if (musicaAtual) { musicaAtual.stop(); musicaAtual = null; }
+}
+
+function sfx(nome) {
+    k.play(nome, { volume: volEfeitos });
+}
+
+// sliders de config
+const sliderMusic = document.getElementById("slider-music");
+const sliderSfx   = document.getElementById("slider-sfx");
+const valMusic    = document.getElementById("val-music");
+const valSfx      = document.getElementById("val-sfx");
+
+sliderMusic.addEventListener("input", () => {
+    volMusica = sliderMusic.value / 100;
+    valMusic.innerText = sliderMusic.value + "%";
+    if (musicaAtual) musicaAtual.volume = volMusica;
+});
+sliderSfx.addEventListener("input", () => {
+    volEfeitos = sliderSfx.value / 100;
+    valSfx.innerText = sliderSfx.value + "%";
+    sfx("sfx_cursor");
+});
+
+// ── ANÚNCIOS ──────────────────────────────────────────────────────
+// Função que o SDK de anúncios vai usar (ex: Poki, CrazyGames)
+function dispararAnuncio() {
+    console.log("SINAL RECEBIDO → Rodando o anúncio!");
+    // Se o programador do SDK já tiver injetado a variável na janela, ele chama aqui:
+    // if (typeof sdkDeAnuncios !== "undefined") {
+    //     sdkDeAnuncios.showAd();
+    // }
+}
+
+// ── I18N ──────────────────────────────────────────────────────────
+const LANGS = {
+    pt: {
+        jogar: "JOGAR", estudio: "CONHEÇA O ESTÚDIO",
+        escolha: "ESCOLHA SEU PILOTO", confirmar: "CONFIRMAR", voltar: "VOLTAR",
+        pontuacao: "PONTUAÇÃO", recorde: "RECORDE", pausado: "PAUSADO",
+        retomar: "RETOMAR", menu: "MENU PRINCIPAL", recomecar: "RECOMEÇAR",
+        fimjogo: "FIM DE JOGO", jogarnovamente: "JOGAR NOVAMENTE",
+        creditos: "CRÉDITOS", config: "CONFIGURAÇÕES",
+        volefx: "VOLUME DOS EFEITOS", volemusica: "VOLUME DA MÚSICA",
+        fase: "FASE",
+        loading: ["PREPARANDO O RIO...", "ACORDANDO OS PÁSSAROS...", "CARREGANDO OBSTÁCULOS...", "QUASE LÁ..."],
+    },
+    en: {
+        jogar: "PLAY", estudio: "MEET THE STUDIO",
+        escolha: "CHOOSE YOUR PILOT", confirmar: "CONFIRM", voltar: "BACK",
+        pontuacao: "SCORE", recorde: "BEST", pausado: "PAUSED",
+        retomar: "RESUME", menu: "MAIN MENU", recomecar: "RESTART",
+        fimjogo: "GAME OVER", jogarnovamente: "PLAY AGAIN",
+        creditos: "CREDITS", config: "SETTINGS",
+        volefx: "SFX VOLUME", volemusica: "MUSIC VOLUME",
+        fase: "WAVE",
+        loading: ["PREPARING THE RIVER...", "WAKING THE BIRDS...", "LOADING OBSTACLES...", "ALMOST THERE..."],
+    },
+    es: {
+        jogar: "JUGAR", estudio: "CONOCE EL ESTUDIO",
+        escolha: "ELIGE TU PILOTO", confirmar: "CONFIRMAR", voltar: "VOLVER",
+        pontuacao: "PUNTUACIÓN", recorde: "RÉCORD", pausado: "PAUSADO",
+        retomar: "REANUDAR", menu: "MENÚ PRINCIPAL", recomecar: "REINICIAR",
+        fimjogo: "FIN DEL JUEGO", jogarnovamente: "JUGAR DE NUEVO",
+        creditos: "CRÉDITOS", config: "CONFIGURACIÓN",
+        volefx: "VOLUMEN DE EFECTOS", volemusica: "VOLUMEN DE MÚSICA",
+        fase: "OLA",
+        loading: ["PREPARANDO EL RÍO...", "DESPERTANDO LOS PÁJAROS...", "CARGANDO OBSTÁCULOS...", "¡YA CASI...!"],
+    },
+};
+let lang = "pt";
+
+function aplicarIdioma() {
+    document.querySelectorAll("[data-i18n]").forEach(el => {
+        const key = el.dataset.i18n;
+        if (LANGS[lang][key]) el.innerText = LANGS[lang][key];
+    });
+    document.querySelectorAll(".btn-idioma").forEach(b => b.classList.toggle("ativo", b.dataset.lang === lang));
+    if (uiWave) uiWave.innerText = `${LANGS[lang].fase} ${wave}`;
+    if (goBest && telaGameover.classList.contains("ativa"))
+        goBest.innerText = `${LANGS[lang].recorde}: ${highScore}`;
+}
+document.querySelectorAll(".btn-idioma").forEach(b => {
+    b.addEventListener("click", () => { sfx("sfx_cursor"); lang = b.dataset.lang; aplicarIdioma(); });
+});
+
+// ── CONSTANTES ────────────────────────────────────────────────────
+const W = BASE_W, H = BASE_H;
+const LANE_TOP        = 370;
+const LANE_BOTTOM     = 470;
+const PLAYER_X        = 200;
+const OBSTACLE_TYPES  = ["bota", "pneu", "toco"];
+const PLAYER_HIT      = { width: 120, height: 55, ox: 10, oy: 0 };
+const OBS_HIT         = { width: 60,  height: 45 };
+const BASE_SPEEDS     = { ceu: 0, nuvens: 20, mato_traz: 50, mato_frente: 100, rio: 160 };
+const SPEED_INITIAL   = 280;
+const SPEED_ACCEL     = 2;
+const SPEED_MAX       = 700;
+const WAVE_SCORE_STEP = 150;
+
+// ── ESTADO ────────────────────────────────────────────────────────
+let currentLane    = "top";
+let isChangingLane = false;
+let obstacleSpeed  = SPEED_INITIAL;
+let spawnTimer     = 0;
+let spawnInterval  = 2;
+let score          = 0;
+let lastScoreDrawn = -1;
+let highScore      = 0;
+let wave           = 1;
+let paused         = false;
+let dying          = false;
+let deathTimer     = 0;
+let velocityY      = 0;
+let selectedBird   = "passaro_1";
+let globalTime     = 0;
+
+// ── ELEMENTOS ─────────────────────────────────────────────────────
+const telaMenu     = document.getElementById("tela-menu");
+const telaPassaro  = document.getElementById("tela-passaro");
+const telaLoading  = document.getElementById("tela-loading");
+const telaPause    = document.getElementById("tela-pause");
+const telaGameover = document.getElementById("tela-gameover");
+const telaCreditos = document.getElementById("tela-creditos");
+const telaConfig   = document.getElementById("tela-config");
+const uiHud        = document.getElementById("ui-hud");
+const btnPause     = document.getElementById("btn-pause");
+const uiScore      = document.getElementById("ui-score");
+const uiBest       = document.getElementById("ui-best");
+const uiWave       = document.getElementById("ui-wave");
+const goScore      = document.getElementById("go-score-val");
+const goBest       = document.getElementById("go-best-val");
+const loadingBar   = document.getElementById("loading-bar");
+const loadingText  = document.getElementById("loading-text");
+const flashEl      = document.getElementById("flash-colisao");
+
+// ── FLASH ─────────────────────────────────────────────────────────
+function dispararFlash() {
+    flashEl.style.transition = "none";
+    flashEl.style.opacity    = "0.75";
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+        flashEl.style.transition = "opacity 0.35s ease";
+        flashEl.style.opacity    = "0";
+    }));
+}
+
+// ── PARTÍCULAS ────────────────────────────────────────────────────
+function criarSplash(playerRef) {
+    const cores = ["#63ab3f", "#92e8c0", "#3b7d4f", "#c8d45d", "#2a5e3a"];
+    for (let i = 0; i < 10; i++) {
+        const angulo     = (Math.PI / 10) * i - Math.PI / 2 + (Math.random() - 0.5) * 1.2;
+        const velocidade = 80 + Math.random() * 120;
+        const tamanho    = 4 + Math.random() * 5;
+        k.add([
+            k.rect(tamanho, tamanho, { radius: tamanho / 2 }),
+            k.pos(playerRef.pos.x, playerRef.pos.y + 10),
+            k.color(k.Color.fromHex(cores[Math.floor(Math.random() * cores.length)])),
+            k.opacity(1),
+            k.z(5),
+            { vx: Math.cos(angulo) * velocidade, vy: Math.sin(angulo) * velocidade, vida: 0, duracaoMax: 0.3 + Math.random() * 0.2 },
+            "particula",
+        ]);
+    }
+}
+
+// ── NAVEGAÇÃO ─────────────────────────────────────────────────────
+const todasTelas = [telaMenu, telaPassaro, telaLoading, telaPause, telaGameover, telaCreditos, telaConfig];
+function mostrarTela(tela) {
+    todasTelas.forEach(t => t.classList.remove("ativa"));
+    if (tela) tela.classList.add("ativa");
+}
+
+// ── LOADING ───────────────────────────────────────────────────────
+function iniciarLoading(onComplete) {
+    mostrarTela(telaLoading);
+    loadingBar.style.width = "0%";
+    const msgs = LANGS[lang].loading;
+    loadingText.innerText  = msgs[0];
+    const duracao = 2800, inicio = performance.now();
+    let msgIdx = 0;
+    function tick(now) {
+        const p = Math.min(1, (now - inicio) / duracao);
+        loadingBar.style.width = (p * 100) + "%";
+        const ni = Math.floor(p * msgs.length);
+        if (ni !== msgIdx && ni < msgs.length) { msgIdx = ni; loadingText.innerText = msgs[msgIdx]; }
+        if (p < 1) { requestAnimationFrame(tick); }
+        else { loadingText.innerText = lang === "pt" ? "VÁ!" : lang === "en" ? "GO!" : "¡YA!"; setTimeout(onComplete, 300); }
+    }
+    requestAnimationFrame(tick);
+}
+
+// ── SELEÇÃO PÁSSARO ───────────────────────────────────────────────
+document.querySelectorAll(".card-passaro").forEach(card => {
+    card.addEventListener("click", () => {
+        sfx("sfx_cursor");
+        document.querySelectorAll(".card-passaro").forEach(c => c.classList.remove("selecionado"));
+        card.classList.add("selecionado");
+        selectedBird = card.dataset.passaro;
+    });
+});
+
+// ── BOTÕES ────────────────────────────────────────────────────────
+document.getElementById("btn-jogar").onclick = () => {
+    sfx("sfx_select"); mostrarTela(telaPassaro);
+};
+document.getElementById("btn-voltar-menu").onclick = () => {
+    sfx("sfx_voltar"); mostrarTela(telaMenu);
+};
+document.getElementById("btn-menu-creditos").onclick = () => {
+    sfx("sfx_popup_open"); mostrarTela(telaCreditos);
+};
+document.getElementById("btn-menu-config").onclick = () => {
+    sfx("sfx_popup_open"); mostrarTela(telaConfig);
+};
+document.getElementById("btn-creditos-voltar").onclick = () => {
+    sfx("sfx_popup_close"); mostrarTela(telaMenu);
+};
+document.getElementById("btn-config-voltar").onclick = () => {
+    sfx("sfx_popup_close"); mostrarTela(telaMenu);
+};
+document.getElementById("btn-studio").onclick = () => window.open("https://icehead.rf.gd/", "_blank");
+
+document.getElementById("btn-confirmar").onclick = () => {
+    sfx("sfx_confirm");
+    iniciarLoading(() => {
+        pararMusica();
+        mostrarTela(null);
+        k.go("game");
+    });
+};
+
+btnPause.onclick = () => {
+    sfx("sfx_popup_open");
+    paused = true; k.paused = true; mostrarTela(telaPause);
+};
+document.getElementById("btn-retomar").onclick = () => {
+    sfx("sfx_popup_close");
+    paused = false; k.paused = false; mostrarTela(null);
+};
+document.getElementById("btn-pause-reiniciar").onclick = () => {
+    sfx("sfx_confirm");
+    paused = false; k.paused = false;
+    iniciarLoading(() => { pararMusica(); mostrarTela(null); k.go("game"); });
+};
+document.getElementById("btn-pause-menu").onclick = () => {
+    sfx("sfx_voltar");
+    paused = false; k.paused = false;
+    uiHud.classList.remove("ativa"); btnPause.classList.remove("ativo");
+    pararMusica();
+    tocarMusica("musica_menu");
+    mostrarTela(telaMenu); k.go("idle");
+};
+document.getElementById("btn-reiniciar").onclick = () => {
+    sfx("sfx_confirm");
+    iniciarLoading(() => { pararMusica(); mostrarTela(null); k.go("game"); });
+};
+document.getElementById("btn-go-menu").onclick = () => {
+    sfx("sfx_voltar");
+    uiHud.classList.remove("ativa"); btnPause.classList.remove("ativo");
+    pararMusica();
+    tocarMusica("musica_menu");
+    mostrarTela(telaMenu); k.go("idle");
+};
+
+// ── SCENE: IDLE ───────────────────────────────────────────────────
+k.scene("idle", () => {});
+
+// ── SCENE: GAME ───────────────────────────────────────────────────
+k.scene("game", () => {
+    uiHud.classList.add("ativa");
+    btnPause.classList.add("ativo");
+    mostrarTela(null);
+    tocarMusica("musica_game");
+
+    currentLane = "top"; isChangingLane = false;
+    obstacleSpeed = SPEED_INITIAL; spawnTimer = 0; spawnInterval = 2;
+    score = 0; lastScoreDrawn = -1; wave = 1; paused = false;
+    dying = false; deathTimer = 0; velocityY = 0; globalTime = 0;
+    k.paused = false;
+
+    uiWave.innerText = `${LANGS[lang].fase} ${wave}`;
+    uiBest.innerText = `${highScore}`;
+
+    const layers = ["ceu", "nuvens", "mato_traz", "mato_frente", "rio"];
+    const zMap   = { ceu: -10, nuvens: -9, mato_traz: -8, mato_frente: -7, rio: -6 };
+    const tiles  = [];
+    for (const name of layers) {
+        for (let i = 0; i < 2; i++) {
+            tiles.push(k.add([
+                k.sprite(name),
+                k.pos(i * W, name === "rio" ? -120 : 0),
+                k.scale(W / 1456, H / 816),
+                k.z(zMap[name]),
+                { layerName: name },
+            ]));
+        }
+    }
+
+    const player = k.add([
+        k.sprite(selectedBird),
+        k.pos(PLAYER_X, LANE_TOP),
+        k.anchor("center"),
+        k.scale(0.4),
+        k.area({ shape: new k.Rect(k.vec2(PLAYER_HIT.ox, PLAYER_HIT.oy), PLAYER_HIT.width, PLAYER_HIT.height) }),
+        k.z(0),
+        "player",
+    ]);
+
+    function spawnObstacle() {
+        const lane   = k.choose(["top", "bottom"]);
+        const sprite = k.choose(OBSTACLE_TYPES);
+        const laneY  = lane === "top" ? LANE_TOP : LANE_BOTTOM;
+        k.add([
+            k.sprite(sprite),
+            k.pos(W + 60, laneY),
+            k.anchor("center"),
+            k.scale(0.5),
+            k.area({ shape: new k.Rect(k.vec2(0, 0), OBS_HIT.width, OBS_HIT.height) }),
+            k.z(0),
+            { baseY: laneY, spawnTime: globalTime },
+            "obstacle",
+        ]);
+    }
+
+    function switchLane() {
+        if (isChangingLane || paused || dying) return;
+        currentLane    = currentLane === "top" ? "bottom" : "top";
+        isChangingLane = true;
+        sfx("sfx_swipe");
+        criarSplash(player);
+    }
+
+    k.onTouchStart(switchLane);
+    k.onClick(switchLane);
+    k.onKeyPress("space", switchLane);
+    k.onKeyPress("escape", () => { if (!dying) btnPause.click(); });
+
+    k.onUpdate(() => {
+        if (paused) return;
+        const dt = k.dt();
+        globalTime += dt;
+
+        const speedRatio = obstacleSpeed / SPEED_INITIAL;
+
+        for (const tile of tiles) {
+            const bs = BASE_SPEEDS[tile.layerName];
+            if (bs === 0) continue;
+            tile.pos.x -= bs * speedRatio * dt;
+            if (tile.pos.x <= -W) tile.pos.x += W * 2;
+        }
+
+        k.get("particula").forEach(p => {
+            p.vida += dt;
+            const prog = p.vida / p.duracaoMax;
+            if (prog >= 1) { k.destroy(p); return; }
+            p.pos.x += p.vx * dt;
+            p.pos.y += p.vy * dt;
+            p.vy    += 300 * dt;
+            p.opacity = 1 - prog;
+        });
+
+        if (dying) {
+            deathTimer += dt;
+            velocityY  += 700 * dt;
+            player.pos.y += velocityY * dt;
+            player.angle  = Math.min(90, (player.angle || 0) + 200 * dt);
+
+            if (deathTimer >= 1.4) {
+                dying = false;
+                k.destroy(player);
+                if (Math.floor(score) > highScore) highScore = Math.floor(score);
+                goScore.innerText = Math.floor(score);
+                goBest.innerText  = `${LANGS[lang].recorde}: ${highScore}`;
+                uiHud.classList.remove("ativa");
+                btnPause.classList.remove("ativo");
+                pararMusica();
+                mostrarTela(telaGameover);
+                
+                // ---> GATILHO DO ANÚNCIO AQUI <---
+                dispararAnuncio();
+            }
+            return;
+        }
+
+        obstacleSpeed = Math.min(SPEED_MAX, obstacleSpeed + SPEED_ACCEL * dt);
+
+        const ty = currentLane === "top" ? LANE_TOP : LANE_BOTTOM;
+        if (Math.abs(player.pos.y - ty) > 2) {
+            player.pos.y = k.lerp(player.pos.y, ty, dt * 12);
+        } else {
+            player.pos.y   = ty;
+            isChangingLane = false;
+        }
+
+        const ps = Math.sin(globalTime * 2.5);
+        player.scale.x = 0.4 + ps * 0.012;
+        player.scale.y = 0.4 - ps * 0.008;
+
+        score += dt * 10;
+        const intScore = Math.floor(score);
+        if (intScore !== lastScoreDrawn) { uiScore.innerText = intScore; lastScoreDrawn = intScore; }
+
+        const newWave = Math.floor(score / WAVE_SCORE_STEP) + 1;
+        if (newWave !== wave) {
+            wave = newWave;
+            uiWave.innerText = `${LANGS[lang].fase} ${wave}`;
+        }
+
+        spawnTimer += dt;
+        spawnInterval = Math.max(0.5, 2 - (obstacleSpeed - SPEED_INITIAL) / 300);
+        if (spawnTimer >= spawnInterval) { spawnTimer = 0; spawnObstacle(); }
+    });
+
+    k.onUpdate("obstacle", (obs) => {
+        if (paused) return;
+        const dt = k.dt();
+        obs.pos.x -= obstacleSpeed * dt;
+        if (!dying) {
+            const t   = globalTime - (obs.spawnTime || 0);
+            const sin = Math.sin(t * 2);
+            obs.scale.x = 0.5 + sin * 0.015;
+            obs.scale.y = 0.5 - sin * 0.01;
+            obs.pos.y   = obs.baseY + sin * 3;
+        }
+        if (obs.pos.x < -100) k.destroy(obs);
+    });
+
+    player.onCollide("obstacle", () => {
+        if (dying) return;
+        dying = true; deathTimer = 0; velocityY = -150;
+        player.unuse("area");
+        dispararFlash();
+        sfx("sfx_punch");
+    });
+});
+
+// ── INIT ──────────────────────────────────────────────────────────
+k.go("idle");
+aplicarIdioma();
+rodarSplash(() => {
+    tocarMusica("musica_menu");
+    mostrarTela(telaMenu);
+});
+
+</script>
+</body>
+</html>
